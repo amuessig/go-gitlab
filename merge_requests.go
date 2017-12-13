@@ -124,6 +124,26 @@ func (m MergeRequestApprovals) String() string {
 	return Stringify(m)
 }
 
+// MergeRequestDiffVersion represents Gitlab merge request version.
+//
+// Gitlab API docs:
+// https://docs.gitlab.com/ce/api/merge_requests.html#get-a-single-mr-diff-version
+type MergeRequestDiffVersion struct {
+	Id             int        `json:"id"`
+	HeadCommitSha  string     `json:"head_commit_sha,omitempty"`
+	BaseCommitSha  string     `json:"base_commit_sha,omitempty"`
+	StartCommitSha string     `json:"start_commit_sha,omitempty"`
+	CreatedAt      *time.Time `json:"created_at,omitempty"`
+	MergeRequestId int        `json:"merge_request_id,omitempty"`
+	State          string     `json:"state,omitempty"`
+	RealSize       string     `json:"real_size,omitempty"`
+	Commits        []*Commit  `json:"commits,omitempty"`
+}
+
+func (m MergeRequestDiffVersion) String() string {
+	return Stringify(m)
+}
+
 // ListMergeRequestsOptions represents the available ListMergeRequests()
 // options.
 //
@@ -509,6 +529,56 @@ func (s *MergeRequestsService) CancelMergeWhenPipelineSucceeds(pid interface{}, 
 	}
 
 	return m, resp, err
+}
+
+// GetMergeRequestDiffVersions get a list of merge request diff versions.
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/api/merge_requests.html#get-mr-diff-versions
+func (s *MergeRequestsService) GetMergeRequestDiffVersions(pid interface{}, mergeRequest int, options ...OptionFunc) ([]*MergeRequestDiffVersion, *Response, error) {
+	project, err := parseID(pid)
+	if err != nil {
+		return nil, nil, err
+	}
+	u := fmt.Sprintf("projects/%s/merge_requests/%d/versions", url.QueryEscape(project), mergeRequest)
+
+	req, err := s.client.NewRequest("GET", u, nil, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var v []*MergeRequestDiffVersion
+	resp, err := s.client.Do(req, &v)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return v, resp, err
+}
+
+// GetSingleMergeRequestDiffVersion get a single MR diff version
+//
+// GitLab API docs:
+// https://docs.gitlab.com/ce/api/merge_requests.html#get-a-single-mr-diff-version
+func (s *MergeRequestsService) GetSingleMergeRequestDiffVersion(pid interface{}, mergeRequest int, versionId int, options ...OptionFunc) (*MergeRequestDiffVersion, *Response, error) {
+	project, err := parseID(pid)
+	if err != nil {
+		return nil, nil, err
+	}
+	u := fmt.Sprintf("projects/%s/merge_requests/%d/versions/%d", url.QueryEscape(project), mergeRequest, versionId)
+
+	req, err := s.client.NewRequest("GET", u, nil, options)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	var v = new(MergeRequestDiffVersion)
+	resp, err := s.client.Do(req, v)
+	if err != nil {
+		return nil, resp, err
+	}
+
+	return v, resp, err
 }
 
 // SetTimeEstimate sets the time estimate for a single project merge request.
